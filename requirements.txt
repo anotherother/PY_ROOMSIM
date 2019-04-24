@@ -1,0 +1,4 @@
+soundfile
+samplerate
+numpy
+scipy
