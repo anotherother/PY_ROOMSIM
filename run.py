@@ -9,7 +9,7 @@ def main():
     mic_pos1 = [2, 2, 1] # in  meters
     mic_pos2 = [2, 2, 1.5] # in  meters
     source_pos = [2, 2, 1.2] # in  meters
-    sr = 16000
+    sampling_rate = 16000
 
     absorption = roomSimSingle.rt60_to_absorption(room_dim, rt60)
 
@@ -23,8 +23,8 @@ def main():
     sim_rir = roomSimSingle.RoomSim(sampling_rate, room, mics, RT60=rt60)
     rir = sim_rir.create_rir(source_pos)
 
-    al = AudioLoader()
-    fs, data = al.load_audio('./wav/4.wav', sampling_rate = sr)
+    al = AudioLoader(sampling_rate)
+    fs, data = al.load_audio('./wav/4.wav')
     print(data.shape)
     data_rev = OverlapAddFilter(rir[:,0], data)
     sf.write('./wav/data_rev4.wav', data_rev, fs)
