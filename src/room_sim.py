@@ -65,7 +65,7 @@ class RoomSim(object):
             self.A = np.vstack((self.A.T[0], self.A.T)).T
             self.F_abs = np.hstack((0, self.F_abs))
         if self.F_abs[-1] != self.sampling_rate/2.0:
-            self.A = np.vstack((self.A.T, self.A.T[-1]))
+            self.A = np.vstack((self.A.T, self.A.T[-1])).T
             self.F_abs = np.hstack((self.F_abs, self.sampling_rate/2.0))
 
         self.tm_sensor = np.zeros((self.channels, 3, 3))
