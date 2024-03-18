@@ -2,8 +2,8 @@ from scipy.interpolate import interp1d
 import scipy.signal as scipy_sig
 import numpy as np
 
-from roomSimSingle import get_rt60
-from src.config import Config
+from .rt60_tools import get_rt60
+from .config import Config
 
 
 class RoomSim(object):
