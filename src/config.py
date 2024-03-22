@@ -1,5 +1,5 @@
-from src.microphone import Microphone
-from src.room import Room
+from .microphone import Microphone
+from .room import Room
 
 class Config(object):
     '''
