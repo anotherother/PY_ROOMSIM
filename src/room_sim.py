@@ -85,11 +85,12 @@ class RoomSim(object):
     def create_rir(self, source_xyz, source_off=None, source_dir=None, fc_highpass=20):
         '''
         Create the RIR
-        source_xyz : list containing xyz position of the source
-        source_off: 3 x 1 list representing the source orientation (azimuth,
-        elevation, roll)
-        source_dir: source directivity np txt file of dimension 181 x 361
-        fc_highpass: approximate cutoff frequency of the highpass filter; not applied if set to 0 or other falsy value
+        - source_xyz : list containing xyz position of the source
+        - source_off: 3 x 1 list representing the source orientation (azimuth,
+          elevation, roll)
+        - source_dir: source directivity np txt file of dimension 181 x 361
+        - fc_highpass: cutoff frequency (-4 dB) of the highpass filter, default is 20 Hz; 
+          not applied if set to 0 or other falsy value
         '''
 
         source_xyz = np.array(source_xyz)
