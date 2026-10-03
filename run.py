@@ -20,7 +20,7 @@ def main():
     mic2 = roomSimSingle.Microphone(mic_pos2, 2, orientation=[0.0, 0.0, 0.0],
                                     direction='cardioid', micro_config_path='./micro_config')
     mics = [mic1, mic2]
-    sim_rir = roomSimSingle.RoomSim(sampling_rate, room, mics, RT60=rt60)
+    sim_rir = roomSimSingle.RoomSim(sr, room, mics, RT60=rt60)
     rir = sim_rir.create_rir(source_pos)
 
     al = AudioLoader()
