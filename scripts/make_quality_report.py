@@ -273,72 +273,72 @@ def write_listening_wav(path, data, sample_rate):
 
 def render_markdown(metrics):
     fixtures = "\n".join(
-        "| %s | %.3e | %s |" % (row["title"], row["max_abs"], "да" if row["within_atol"] else "нет")
+        "| %s | %.3e | %s |" % (_room_label(row), row["max_abs"], "yes" if row["within_atol"] else "no")
         for row in metrics["fixtures"]
     )
     timings = "\n".join(
-        "| %s | %.1f | %d |" % (row["title"], row["median_ms"], row["samples"])
+        "| %s | %.1f | %d |" % (_room_label(row), row["median_ms"], row["samples"])
         for row in metrics["benchmark"]
     )
     path = metrics["direct_path"]
     rt60 = metrics["rt60"]
     versions = metrics["versions"]
-    return """# Оценка качества PY_ROOMSIM
+    return """# Quality of PY_ROOMSIM
 
-Отчёт собран скриптом `scripts/make_quality_report.py` {generated}. Сравниваются три эталонные комнаты из `tests/fixtures/`, геометрическая задержка прямого звука и оценка RT60 по кривой Шрёдера. Побитовое равенство RIR на этой платформе не выполняется: расхождение сидит в последних битах FFT и `lfilter`, поэтому порог качества — `1e-12`.
+This report was written by `scripts/make_quality_report.py` on {generated}. It compares three reference rooms in `tests/fixtures/`, the geometric direct-path delay, and an RT60 estimate from the Schroeder curve. Bit-exact agreement does not hold on this platform: the residual is in the last bits of the FFT and of `lfilter`, so the acceptance threshold is `1e-12`.
 
-Версии прогона: Python {python}, NumPy {numpy}, SciPy {scipy}, soundfile {soundfile}.
+Run versions: Python {python}, NumPy {numpy}, SciPy {scipy}, soundfile {soundfile}.
 
-## Сводка
+## Summary
 
-![Сводка качества](img/quality/scorecard.png)
+![Quality summary](img/quality/scorecard.png)
 
-| Проверка | Результат |
+| Check | Result |
 | --- | --- |
-| Максимум \\|Δ\\| по эталонам | {worst:.3e} |
-| Повторный вызов omni | {repeat} |
-| Ошибка задержки прямого звука | {error:+.2f} отсчёта (пик {peak}, геометрия {expected:.2f}) |
-| RT60, цель {target:.2f} с | оценка {estimated:.3f} с, относительная ошибка {rel:.0f}% |
-| Поглощение демо-комнаты | {absorption:.4f} |
+| Maximum \\|Δ\\| across the reference rooms | {worst:.3e} |
+| Repeated omnidirectional call | {repeat} |
+| Direct-path error | {error:+.2f} samples (peak {peak}, geometry {expected:.2f}) |
+| RT60, target {target:.2f} s | estimate {estimated:.3f} s, relative error {rel:.0f}% |
+| Demo-room absorption | {absorption:.4f} |
 
-## Импульсные отклики
+## Impulse responses
 
-Пунктир на графике — задержка `distance / 343`. Для всенаправленного сценария допуск проверки — один отсчёт.
+The dashed line is the delay `distance / 343`. The one-sample tolerance applies to the omnidirectional room.
 
-![Импульсные отклики](img/quality/rir_waveforms.png)
+![Room impulse responses](img/quality/rir_waveforms.png)
 
-## Расхождение с эталоном
+## Deviation from the reference
 
-| Комната | max \\|Δ\\| | в пределах 1e-12 |
+| Room | max \\|Δ\\| | within 1e-12 |
 | --- | --- | --- |
 {fixtures}
 
-![Ошибка относительно эталона](img/quality/fixture_error.png)
+![Absolute deviation from the reference](img/quality/fixture_error.png)
 
-## Спад энергии
+## Energy decay
 
-Демо-комната {room} м, RT60 {target:.2f} с, микрофоны всенаправленный и кардиоида. Наклон снят на участке Шрёдера от −5 до −25 дБ и экстраполирован к −60 дБ (T20). Это проверка порядка величины: хвост импульса обрезан длиной, которую задаёт RT60, а воздух в симуляторе добавляет затухание сверх формулы Норриса–Эйринга.
+The demo room is {room} m, with a target RT60 of {target:.2f} s and one omnidirectional microphone plus one cardioid. The slope is fitted on the Schroeder curve from −5 dB to −25 dB and extrapolated to −60 dB (T20). This is an order-of-magnitude check: the impulse is truncated at the length set by the target RT60, and air absorption in the simulator adds decay beyond the Norris–Eyring formula.
 
-![Спад энергии](img/quality/energy_decay.png)
+![Schroeder energy decay](img/quality/energy_decay.png)
 
-## Пример прослушивания
+## Listening example
 
-`wav/4.wav` приведён к 16 кГц через `AudioLoader` и свёрнут с первым каналом демо-импульса функцией `OverlapAddFilter`. Свёртка возвращает сигнал той же длины, что и сухой фрагмент. Файлы ниже нормированы к пику {listening:.2f} для прослушивания; график показывает амплитуду до нормировки.
+`wav/4.wav` is resampled to 16 kHz by `AudioLoader` and convolved with the first channel of the demo impulse response by `OverlapAddFilter`. The convolution has the same length as the dry signal. The files below are normalized to a peak of {listening:.2f} for playback; the figure shows the waveform before normalization.
 
-- [examples/rir_stereo.wav](examples/rir_stereo.wav) — стереоимпульс, сырой пик {rir_peak:.3f}
-- [examples/speech_reverb.wav](examples/speech_reverb.wav) — речь после свёртки, сырой пик {wet_peak:.3f}, сухой пик {dry_peak:.3f}
+- [examples/rir_stereo.wav](examples/rir_stereo.wav) — stereo impulse response, raw peak {rir_peak:.3f}
+- [examples/speech_reverb.wav](examples/speech_reverb.wav) — reverberant speech, raw peak {wet_peak:.3f}, dry peak {dry_peak:.3f}
 
-![Речь до и после](img/quality/speech_before_after.png)
+![Dry and reverberant speech](img/quality/speech_before_after.png)
 
-## Время расчёта
+## Runtime
 
-Медиана трёх вызовов `create_rir` на эталонных сценариях.
+Median of three `create_rir` calls on the reference rooms.
 
-| Комната | медиана, мс | отсчёты |
+| Room | median (ms) | samples |
 | --- | --- | --- |
 {timings}
 
-## Как повторить
+## Reproduce
 
 ```bash
 python3 -m pip install --user -r requirements-report.txt
@@ -346,7 +346,7 @@ python3 -m unittest tests.test_quality_metrics -v
 python3 scripts/make_quality_report.py
 ```
 
-Числа этого файла и `img/quality/metrics.json` перезаписываются скриптом.
+The script overwrites this file and `img/quality/metrics.json`.
 """.format(
         generated=metrics["generated_at"],
         python=versions["python"],
@@ -354,7 +354,7 @@ python3 scripts/make_quality_report.py
         scipy=versions["scipy"],
         soundfile=versions["soundfile"],
         worst=max(row["max_abs"] for row in metrics["fixtures"]),
-        repeat="идентичен" if metrics["repeat_identical"] else "различается",
+        repeat="identical" if metrics["repeat_identical"] else "not identical",
         error=path["error_samples"],
         peak=path["peak_index"],
         expected=path["expected_samples"],

@@ -10,7 +10,7 @@
   "fixtures": [
     {
       "key": "omni",
-      "title": "Всенаправленный",
+      "title": "Omnidirectional",
       "max_abs": 1.8832158055204218e-14,
       "within_atol": true,
       "samples": 320,
@@ -29,7 +29,7 @@
     },
     {
       "key": "directional",
-      "title": "Направленный",
+      "title": "Directional",
       "max_abs": 3.8653975853453204e-15,
       "within_atol": true,
       "samples": 1208,
@@ -56,7 +56,7 @@
     },
     {
       "key": "facade",
-      "title": "Фасад",
+      "title": "Facade",
       "max_abs": 5.56325818745762e-15,
       "within_atol": true,
       "samples": 480,
@@ -141,7 +141,7 @@
   "benchmark": [
     {
       "key": "omni",
-      "title": "Всенаправленный",
+      "title": "Omnidirectional",
       "median_ms": 3.1701670000074955,
       "min_ms": 3.0482189999929687,
       "samples": 320,
@@ -149,7 +149,7 @@
     },
     {
       "key": "directional",
-      "title": "Направленный",
+      "title": "Directional",
       "median_ms": 104.15972999999212,
       "min_ms": 102.84120100004657,
       "samples": 1208,
@@ -157,7 +157,7 @@
     },
     {
       "key": "facade",
-      "title": "Фасад",
+      "title": "Facade",
       "median_ms": 9.092749000046751,
       "min_ms": 9.038872000019182,
       "samples": 480,

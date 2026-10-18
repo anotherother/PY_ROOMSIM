@@ -1,63 +1,63 @@
-# Оценка качества PY_ROOMSIM
+# Quality of PY_ROOMSIM
 
-Отчёт собран скриптом `scripts/make_quality_report.py` 2026-10-18 13:45 UTC. Сравниваются три эталонные комнаты из `tests/fixtures/`, геометрическая задержка прямого звука и оценка RT60 по кривой Шрёдера. Побитовое равенство RIR на этой платформе не выполняется: расхождение сидит в последних битах FFT и `lfilter`, поэтому порог качества — `1e-12`.
+This report was written by `scripts/make_quality_report.py` on 2026-10-18 13:45 UTC. It compares three reference rooms in `tests/fixtures/`, the geometric direct-path delay, and an RT60 estimate from the Schroeder curve. Bit-exact agreement does not hold on this platform: the residual is in the last bits of the FFT and of `lfilter`, so the acceptance threshold is `1e-12`.
 
-Версии прогона: Python 3.12.3, NumPy 2.5.4, SciPy 1.18.1, soundfile 0.14.0.
+Run versions: Python 3.12.3, NumPy 2.5.4, SciPy 1.18.1, soundfile 0.14.0.
 
-## Сводка
+## Summary
 
-![Сводка качества](img/quality/scorecard.png)
+![Quality summary](img/quality/scorecard.png)
 
-| Проверка | Результат |
+| Check | Result |
 | --- | --- |
-| Максимум \|Δ\| по эталонам | 1.883e-14 |
-| Повторный вызов omni | идентичен |
-| Ошибка задержки прямого звука | -0.92 отсчёта (пик 48, геометрия 48.92) |
-| RT60, цель 0.30 с | оценка 0.280 с, относительная ошибка 7% |
-| Поглощение демо-комнаты | 0.2494 |
+| Maximum \|Δ\| across the reference rooms | 1.883e-14 |
+| Repeated omnidirectional call | identical |
+| Direct-path error | -0.92 samples (peak 48, geometry 48.92) |
+| RT60, target 0.30 s | estimate 0.280 s, relative error 7% |
+| Demo-room absorption | 0.2494 |
 
-## Импульсные отклики
+## Impulse responses
 
-Пунктир на графике — задержка `distance / 343`. Для всенаправленного сценария допуск проверки — один отсчёт.
+The dashed line is the delay `distance / 343`. The one-sample tolerance applies to the omnidirectional room.
 
-![Импульсные отклики](img/quality/rir_waveforms.png)
+![Room impulse responses](img/quality/rir_waveforms.png)
 
-## Расхождение с эталоном
+## Deviation from the reference
 
-| Комната | max \|Δ\| | в пределах 1e-12 |
+| Room | max \|Δ\| | within 1e-12 |
 | --- | --- | --- |
-| Всенаправленный | 1.883e-14 | да |
-| Направленный | 3.865e-15 | да |
-| Фасад | 5.563e-15 | да |
+| Omnidirectional | 1.883e-14 | yes |
+| Directional | 3.865e-15 | yes |
+| Facade | 5.563e-15 | yes |
 
-![Ошибка относительно эталона](img/quality/fixture_error.png)
+![Absolute deviation from the reference](img/quality/fixture_error.png)
 
-## Спад энергии
+## Energy decay
 
-Демо-комната 3.5×4.0×2.5 м, RT60 0.30 с, микрофоны всенаправленный и кардиоида. Наклон снят на участке Шрёдера от −5 до −25 дБ и экстраполирован к −60 дБ (T20). Это проверка порядка величины: хвост импульса обрезан длиной, которую задаёт RT60, а воздух в симуляторе добавляет затухание сверх формулы Норриса–Эйринга.
+The demo room is 3.5×4.0×2.5 m, with a target RT60 of 0.30 s and one omnidirectional microphone plus one cardioid. The slope is fitted on the Schroeder curve from −5 dB to −25 dB and extrapolated to −60 dB (T20). This is an order-of-magnitude check: the impulse is truncated at the length set by the target RT60, and air absorption in the simulator adds decay beyond the Norris–Eyring formula.
 
-![Спад энергии](img/quality/energy_decay.png)
+![Schroeder energy decay](img/quality/energy_decay.png)
 
-## Пример прослушивания
+## Listening example
 
-`wav/4.wav` приведён к 16 кГц через `AudioLoader` и свёрнут с первым каналом демо-импульса функцией `OverlapAddFilter`. Свёртка возвращает сигнал той же длины, что и сухой фрагмент. Файлы ниже нормированы к пику 0.98 для прослушивания; график показывает амплитуду до нормировки.
+`wav/4.wav` is resampled to 16 kHz by `AudioLoader` and convolved with the first channel of the demo impulse response by `OverlapAddFilter`. The convolution has the same length as the dry signal. The files below are normalized to a peak of 0.98 for playback; the figure shows the waveform before normalization.
 
-- [examples/rir_stereo.wav](examples/rir_stereo.wav) — стереоимпульс, сырой пик 0.939
-- [examples/speech_reverb.wav](examples/speech_reverb.wav) — речь после свёртки, сырой пик 2.211, сухой пик 1.012
+- [examples/rir_stereo.wav](examples/rir_stereo.wav) — stereo impulse response, raw peak 0.939
+- [examples/speech_reverb.wav](examples/speech_reverb.wav) — reverberant speech, raw peak 2.211, dry peak 1.012
 
-![Речь до и после](img/quality/speech_before_after.png)
+![Dry and reverberant speech](img/quality/speech_before_after.png)
 
-## Время расчёта
+## Runtime
 
-Медиана трёх вызовов `create_rir` на эталонных сценариях.
+Median of three `create_rir` calls on the reference rooms.
 
-| Комната | медиана, мс | отсчёты |
+| Room | median (ms) | samples |
 | --- | --- | --- |
-| Всенаправленный | 3.2 | 320 |
-| Направленный | 104.2 | 1208 |
-| Фасад | 9.1 | 480 |
+| Omnidirectional | 3.2 | 320 |
+| Directional | 104.2 | 1208 |
+| Facade | 9.1 | 480 |
 
-## Как повторить
+## Reproduce
 
 ```bash
 python3 -m pip install --user -r requirements-report.txt
@@ -65,4 +65,4 @@ python3 -m unittest tests.test_quality_metrics -v
 python3 scripts/make_quality_report.py
 ```
 
-Числа этого файла и `img/quality/metrics.json` перезаписываются скриптом.
+The script overwrites this file and `img/quality/metrics.json`.
