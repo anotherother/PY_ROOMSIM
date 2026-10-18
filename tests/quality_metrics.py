@@ -34,7 +34,7 @@ DEMO_MICS = (
 SCENARIOS = (
     {
         "key": "omni",
-        "title": "Всенаправленный",
+        "title": "Omnidirectional",
         "fixture": "rir_omni.npy",
         "simulate": omni_rir,
         "sample_rate": 16000,
@@ -44,7 +44,7 @@ SCENARIOS = (
     },
     {
         "key": "directional",
-        "title": "Направленный",
+        "title": "Directional",
         "fixture": "rir_directional.npy",
         "simulate": directional_rir,
         "sample_rate": 16000,
@@ -55,7 +55,7 @@ SCENARIOS = (
     },
     {
         "key": "facade",
-        "title": "Фасад",
+        "title": "Facade",
         "fixture": "rir_facade.npy",
         "simulate": facade_rir,
         "sample_rate": 16000,

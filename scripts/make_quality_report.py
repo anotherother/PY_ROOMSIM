@@ -18,7 +18,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import soundfile as sf
-from matplotlib.patches import FancyBboxPatch
 from scipy import signal
 
 from src.overlap_add_filter import OverlapAddFilter
@@ -42,240 +41,226 @@ IMG_DIR = ROOT / "img" / "quality"
 EXAMPLES_DIR = ROOT / "examples"
 LISTENING_PEAK = 0.98
 
-INK = "#1c1917"
-MUTED = "#78716c"
-PAPER = "#f4f1eb"
-CARD = "#fffcf8"
-TEAL = "#0f766e"
-AMBER = "#b45309"
-BLUE = "#1d4ed8"
-RED = "#9f1239"
-LINE = "#e7e5e4"
+# Okabe–Ito colors, readable in print and for deuteranopia.
+BLUE = "#0072B2"
+VERMILION = "#D55E00"
+BLACK = "#222222"
+
+ROOM_LABELS = {
+    "omni": "Omnidirectional",
+    "directional": "Directional",
+    "facade": "Facade",
+}
 
 
 def _font():
-    plt.rcParams["font.family"] = "DejaVu Sans"
-    plt.rcParams["axes.unicode_minus"] = False
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.serif": ["STIXGeneral", "DejaVu Serif"],
+        "mathtext.fontset": "stix",
+        "axes.unicode_minus": False,
+        "axes.linewidth": 0.6,
+        "axes.labelsize": 8,
+        "axes.titlesize": 9,
+        "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+        "legend.fontsize": 7,
+        "legend.frameon": False,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "xtick.direction": "out",
+        "ytick.direction": "out",
+        "xtick.major.size": 3.0,
+        "ytick.major.size": 3.0,
+        "xtick.major.width": 0.6,
+        "ytick.major.width": 0.6,
+        "lines.linewidth": 0.8,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+        "savefig.facecolor": "white",
+        "savefig.dpi": 300,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+    })
 
 
 def _save(fig, path):
-    fig.savefig(path, dpi=140, bbox_inches="tight", facecolor=fig.get_facecolor())
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
 
-def _card(fig, x, y, w, h, eyebrow, value, detail, tone):
-    ax = fig.add_axes([x, y, w, h])
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis("off")
-    ax.add_patch(FancyBboxPatch(
-        (0.0, 0.0), 1.0, 1.0,
-        boxstyle="round,pad=0.012,rounding_size=0.04",
-        facecolor=CARD,
-        edgecolor=LINE,
-        linewidth=1.2,
-        mutation_aspect=0.55,
-        transform=ax.transAxes,
-        clip_on=False,
-    ))
-    ax.add_patch(plt.Rectangle((0.0, 0.0), 0.018, 1.0, color=tone, transform=ax.transAxes, clip_on=False))
-    ax.text(0.07, 0.74, eyebrow, color=MUTED, fontsize=10, ha="left", va="center")
-    ax.text(0.07, 0.42, value, color=INK, fontsize=18, fontweight="bold", ha="left", va="center")
-    ax.text(0.07, 0.16, detail, color=MUTED, fontsize=9, ha="left", va="center")
+def _room_label(row):
+    return ROOM_LABELS.get(row["key"], row["title"])
+
+
+def _panel_title(ax, text):
+    ax.set_title(text, loc="left", pad=3, color="black")
 
 
 def draw_scorecard(path, metrics):
-    fig = plt.figure(figsize=(13.2, 7.4))
-    fig.patch.set_facecolor(PAPER)
-    fig.text(0.045, 0.94, "PY_ROOMSIM", color=TEAL, fontsize=12, fontweight="bold", ha="left")
-    fig.text(0.045, 0.875, "Оценка качества симулятора", color=INK, fontsize=22, fontweight="bold", ha="left")
-    fig.text(
-        0.045, 0.825,
-        "эталон ≤ 1e-12   ·   прямой звук ±1 отсчёт   ·   RT60 по наклону T20",
-        color=MUTED, fontsize=11, ha="left",
-    )
-    fig.text(
-        0.955, 0.94,
-        "NumPy %s   ·   SciPy %s   ·   Python %s" % (
-            metrics["versions"]["numpy"], metrics["versions"]["scipy"], metrics["versions"]["python"],
-        ),
-        color=MUTED, fontsize=9, ha="right",
-    )
-
     fixtures = metrics["fixtures"]
-    worst = max(row["max_abs"] for row in fixtures)
-    omni_path = metrics["direct_path"]
+    benchmark = metrics["benchmark"]
+    direct = metrics["direct_path"]
     rt60 = metrics["rt60"]
-    repeated = metrics["repeat_identical"]
-    rt60_tone = TEAL if rt60["relative_error"] <= 0.35 else AMBER
+    fig, axes = plt.subplots(1, 2, figsize=(7.16, 3.05))
 
-    cards = [
-        ("Эталон", "%.2e" % worst, "макс. |Δ| по трём комнатам", TEAL if all(row["within_atol"] for row in fixtures) else AMBER),
-        ("Повторный вызов", "идентичен" if repeated else "различается", "omni, два прогона подряд", TEAL if repeated else AMBER),
-        ("Прямой звук", "%+.2f отсч." % omni_path["error_samples"], "пик относительно distance/343", TEAL if omni_path["within_tolerance"] else AMBER),
-        ("RT60", "%.3f с" % rt60["estimated_s"], "цель %.2f с, ошибка %.0f%%" % (rt60["target_s"], 100 * rt60["relative_error"]), rt60_tone),
-    ]
-    gap = 0.018
-    width = (0.91 - 3 * gap) / 4
-    for index, (eyebrow, value, detail, tone) in enumerate(cards):
-        _card(fig, 0.045 + index * (width + gap), 0.52, width, 0.26, eyebrow, value, detail, tone)
+    error_ax, time_ax = axes
+    labels = [_room_label(row) for row in fixtures]
+    positions = np.arange(len(labels))
+    errors = [row["max_abs"] for row in fixtures]
+    error_ax.barh(positions, errors, color=BLUE, height=0.55, zorder=2)
+    error_ax.set_xscale("log")
+    error_ax.set_xlim(1e-16, 3e-11)
+    error_ax.axvline(FIXTURE_ATOL, color=BLACK, ls="--", lw=0.7, zorder=1)
+    error_ax.text(
+        FIXTURE_ATOL, 1.03,
+        r"$10^{-12}$",
+        transform=error_ax.get_xaxis_transform(),
+        ha="center", va="bottom", fontsize=7, clip_on=False,
+    )
+    error_ax.set_yticks(positions)
+    error_ax.set_yticklabels(labels)
+    error_ax.invert_yaxis()
+    error_ax.set_xlabel(r"Maximum $|\Delta|$")
+    _panel_title(error_ax, "(a)  Deviation from the reference")
+    for y_pos, value in zip(positions, errors):
+        error_ax.text(value * 1.8, y_pos, "%.1e" % value, va="center", ha="left", fontsize=7, color=BLACK)
 
-    ax = fig.add_axes([0.18, 0.12, 0.76, 0.32])
-    ax.set_facecolor(PAPER)
-    names = [row["title"] for row in metrics["benchmark"]]
-    values = [row["median_ms"] for row in metrics["benchmark"]]
-    positions = np.arange(len(names))
-    bars = ax.barh(positions, values, color=["#0f766e", "#115e59", "#134e4a"], height=0.62)
-    ax.set_yticks(positions)
-    ax.set_yticklabels(names, fontsize=11, color=INK)
-    ax.invert_yaxis()
-    ax.set_xlabel("медиана create_rir, мс", color=MUTED)
-    ax.tick_params(colors=MUTED)
-    for spine in ax.spines.values():
-        spine.set_color(LINE)
-    ax.grid(axis="x", color=LINE)
-    ax.set_axisbelow(True)
-    for bar, row in zip(bars, metrics["benchmark"]):
-        ax.text(
-            bar.get_width() + max(values) * 0.02,
-            bar.get_y() + bar.get_height() / 2,
-            "%.1f мс  ·  %d отсч." % (row["median_ms"], row["samples"]),
-            va="center", ha="left", color=INK, fontsize=10,
+    times = [row["median_ms"] for row in benchmark]
+    time_ax.barh(positions, times, color=BLUE, height=0.55)
+    time_ax.set_yticks(positions)
+    time_ax.set_yticklabels(labels)
+    time_ax.invert_yaxis()
+    time_ax.set_xlabel(r"Median runtime (ms)")
+    time_ax.set_xlim(0, max(times) * 1.38)
+    _panel_title(time_ax, "(b)  Runtime of create_rir")
+    for y_pos, row in zip(positions, benchmark):
+        time_ax.text(
+            row["median_ms"] + max(times) * 0.03,
+            y_pos,
+            "%.1f ms" % row["median_ms"],
+            va="center", ha="left", fontsize=7, color=BLACK,
         )
-    ax.set_xlim(0, max(values) * 1.55)
-    fig.text(0.18, 0.045, "c = 343 м/с", color=MUTED, fontsize=9)
+
+    repeat = "identical" if metrics["repeat_identical"] else "not identical"
+    fig.text(
+        0.0, 0.02,
+        "Omnidirectional direct-path error: %+.2f samples.\n"
+        r"Schroeder $T_{20}$ estimate: %.3f s (target %.2f s, relative error %.0f%%). Repeated call: %s."
+        % (direct["error_samples"], rt60["estimated_s"], rt60["target_s"], 100 * rt60["relative_error"], repeat),
+        fontsize=7, ha="left", va="bottom", color=BLACK, linespacing=1.35,
+    )
+    fig.tight_layout(rect=(0, 0.12, 1, 1))
     _save(fig, path)
 
 
 def draw_waveforms(path, fixtures):
-    fig, axes = plt.subplots(3, 1, figsize=(12.4, 8.2), sharex=False)
-    fig.patch.set_facecolor(PAPER)
-    fig.suptitle("Импульсные отклики и геометрическая задержка", color=INK, fontsize=16, fontweight="bold")
-    colors = (TEAL, AMBER)
-    for ax, row in zip(axes, fixtures):
-        ax.set_facecolor(CARD)
+    fig, axes = plt.subplots(3, 1, figsize=(7.16, 6.15), sharex=False)
+    letters = ("(a)", "(b)", "(c)")
+    for ax, row, letter in zip(axes, fixtures, letters):
         actual = row["actual"]
         time_ms = np.arange(actual.shape[0]) / row["sample_rate"] * 1000.0
+        delay_labeled = False
         for channel in range(actual.shape[1]):
-            ax.plot(time_ms, actual[:, channel], color=colors[channel % 2], lw=1.0, label="канал %d" % (channel + 1))
+            label = "Impulse response" if actual.shape[1] == 1 else "Channel %d" % (channel + 1)
+            ax.plot(time_ms, actual[:, channel], color=(BLUE, VERMILION)[channel % 2], lw=0.7, label=label)
             delay_ms = row["direct_paths"][channel]["expected_samples"] / row["sample_rate"] * 1000.0
-            ax.axvline(delay_ms, color=BLUE, ls="--", lw=1.0, alpha=0.9)
-        ax.set_ylabel("амплитуда", color=MUTED)
-        ax.set_title(row["title"], loc="left", color=INK, fontsize=12)
-        ax.tick_params(colors=MUTED)
-        for spine in ax.spines.values():
-            spine.set_color(LINE)
-        ax.grid(color=LINE, lw=0.6)
-        ax.legend(frameon=False, fontsize=9)
-    axes[-1].set_xlabel("время, мс", color=MUTED)
-    fig.text(0.01, 0.01, "Пунктир — задержка distance / 343.", color=MUTED, fontsize=9)
-    fig.tight_layout(rect=(0, 0.03, 1, 0.96))
+            ax.axvline(
+                delay_ms, color="0.25", ls="--", lw=0.6,
+                label="Geometric delay" if not delay_labeled else None,
+            )
+            delay_labeled = True
+        ax.set_ylabel("Amplitude")
+        _panel_title(ax, "%s  %s" % (letter, _room_label(row)))
+        ax.legend(loc="upper right", handlelength=1.6)
+    axes[-1].set_xlabel("Time (ms)")
+    fig.tight_layout()
     _save(fig, path)
 
 
 def draw_fixture_error(path, fixtures):
-    fig, axes = plt.subplots(3, 1, figsize=(12.4, 8.0))
-    fig.patch.set_facecolor(PAPER)
-    fig.suptitle("Модуль разности с эталонными RIR", color=INK, fontsize=16, fontweight="bold")
-    for ax, row in zip(axes, fixtures):
-        ax.set_facecolor(CARD)
+    fig, axes = plt.subplots(3, 1, figsize=(7.16, 6.15))
+    letters = ("(a)", "(b)", "(c)")
+    for index, (ax, row, letter) in enumerate(zip(axes, fixtures, letters)):
         diff = np.abs(row["actual"] - row["expected"])
         if diff.ndim == 2:
             diff = np.max(diff, axis=1)
         shown = diff.astype(float)
         shown[shown == 0.0] = np.nan
         time_ms = np.arange(diff.size) / row["sample_rate"] * 1000.0
-        ax.semilogy(time_ms, shown, color=RED, lw=1.0)
-        ax.axhline(FIXTURE_ATOL, color=TEAL, ls="--", lw=1.1, label="порог 1e-12")
+        ax.semilogy(time_ms, shown, color=BLACK, lw=0.7)
+        ax.axhline(FIXTURE_ATOL, color=VERMILION, ls="--", lw=0.7, label=r"Tolerance $10^{-12}$")
         ax.set_ylim(1e-18, 1e-11)
-        ax.set_title("%s   max |Δ| = %.2e" % (row["title"], row["max_abs"]), loc="left", color=INK, fontsize=12)
-        ax.set_ylabel("|Δ|", color=MUTED)
-        ax.tick_params(colors=MUTED)
-        for spine in ax.spines.values():
-            spine.set_color(LINE)
-        ax.grid(color=LINE, which="both", lw=0.5)
-        ax.legend(frameon=False, fontsize=9)
-    axes[-1].set_xlabel("время, мс", color=MUTED)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
-    _save(fig, path)
-
-
-def draw_energy(path, rt60):
-    fig, ax = plt.subplots(figsize=(11.2, 6.2))
-    fig.patch.set_facecolor(PAPER)
-    ax.set_facecolor(CARD)
-    time_s = rt60["time_s"]
-    decay = rt60["decay_db"]
-    ax.plot(time_s, decay, color=TEAL, lw=1.6, label="кривая Шрёдера")
-    mask = rt60["fit_mask"]
-    slope = rt60["slope_db_per_s"]
-    intercept = rt60["intercept_db"]
-    t_line = np.linspace(float(time_s[mask][0]), max(rt60["estimated_s"], float(time_s[mask][-1])), 40)
-    ax.plot(t_line, slope * t_line + intercept, color=AMBER, lw=1.4, ls="--", label="экстраполяция T20 к −60 дБ")
-    ax.axvline(rt60["target_s"], color=BLUE, ls=":", lw=1.3, label="цель %.2f с" % rt60["target_s"])
-    ax.axvline(rt60["estimated_s"], color=AMBER, ls=":", lw=1.2, label="оценка %.3f с" % rt60["estimated_s"])
-    ax.set_ylim(-70, 2)
-    ax.set_xlim(0, max(float(time_s[-1]), rt60["target_s"], rt60["estimated_s"]) * 1.05)
-    ax.set_title("Спад энергии в демо-комнате, RT60 = %.2f с" % rt60["target_s"], loc="left", color=INK, fontsize=15, fontweight="bold")
-    ax.set_xlabel("время, с", color=MUTED)
-    ax.set_ylabel("уровень, дБ", color=MUTED)
-    ax.tick_params(colors=MUTED)
-    for spine in ax.spines.values():
-        spine.set_color(LINE)
-    ax.grid(color=LINE, lw=0.6)
-    ax.legend(frameon=False, fontsize=10)
+        ax.set_ylabel(r"$|\Delta|$")
+        _panel_title(ax, r"%s  %s,  $\max|\Delta| = %.2e$" % (letter, _room_label(row), row["max_abs"]))
+        if index == 0:
+            ax.legend(loc="upper right")
+    axes[-1].set_xlabel("Time (ms)")
     fig.tight_layout()
     _save(fig, path)
 
 
-def _style_axes(ax):
-    ax.set_facecolor(CARD)
-    ax.tick_params(colors=MUTED)
-    for spine in ax.spines.values():
-        spine.set_color(LINE)
+def draw_energy(path, rt60):
+    fig, ax = plt.subplots(figsize=(7.16, 3.35))
+    time_s = rt60["time_s"]
+    decay = rt60["decay_db"]
+    ax.plot(time_s, decay, color=BLACK, lw=1.0, label="Schroeder curve")
+    mask = rt60["fit_mask"]
+    slope = rt60["slope_db_per_s"]
+    intercept = rt60["intercept_db"]
+    t_line = np.linspace(float(time_s[mask][0]), max(rt60["estimated_s"], float(time_s[mask][-1])), 50)
+    ax.plot(t_line, slope * t_line + intercept, color=VERMILION, lw=0.9, ls="--", label=r"$T_{20}$ extrapolated to $-60$ dB")
+    ax.axvline(rt60["target_s"], color=BLUE, ls=":", lw=0.8, label="Target %.2f s" % rt60["target_s"])
+    ax.axvline(rt60["estimated_s"], color=VERMILION, ls=":", lw=0.8, label="Estimate %.3f s" % rt60["estimated_s"])
+    ax.set_ylim(-70, 2)
+    ax.set_xlim(0, max(float(time_s[-1]), rt60["target_s"], rt60["estimated_s"]) * 1.02)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Level (dB)")
+    ax.legend(loc="upper left", bbox_to_anchor=(0.38, 0.98), frameon=False, handlelength=1.8, borderaxespad=0.0)
+    fig.tight_layout()
+    _save(fig, path)
 
 
 def draw_speech(path, dry, wet, sample_rate):
-    fig = plt.figure(figsize=(12.8, 7.8))
-    fig.patch.set_facecolor(PAPER)
-    grid = fig.add_gridspec(2, 3, width_ratios=(1, 1, 0.045), wspace=0.32, hspace=0.42)
+    fig = plt.figure(figsize=(7.16, 5.35))
+    grid = fig.add_gridspec(2, 3, width_ratios=(1, 1, 0.045), wspace=0.38, hspace=0.48)
     wave_axes = [fig.add_subplot(grid[0, 0]), fig.add_subplot(grid[0, 1])]
     spec_axes = [fig.add_subplot(grid[1, 0]), fig.add_subplot(grid[1, 1])]
     color_ax = fig.add_subplot(grid[1, 2])
-    fig.suptitle("Речь до и после свёртки с импульсным откликом", color=INK, fontsize=16, fontweight="bold")
     time_s = np.arange(dry.shape[0]) / sample_rate
     duration = float(time_s[-1]) if time_s.size else 0.0
     peak = max(float(np.max(np.abs(dry))), float(np.max(np.abs(wet))))
     spectrograms = []
     for ax, signal_in, title, color in (
-        (wave_axes[0], dry, "Сухой сигнал", TEAL),
-        (wave_axes[1], wet, "После свёртки", AMBER),
+        (wave_axes[0], dry, "(a)  Dry signal", BLACK),
+        (wave_axes[1], wet, "(b)  Reverberant signal", VERMILION),
     ):
-        _style_axes(ax)
-        ax.plot(time_s, signal_in, color=color, lw=0.6)
+        ax.plot(time_s, signal_in, color=color, lw=0.35)
         ax.set_xlim(0, duration)
         ax.set_ylim(-peak * 1.05, peak * 1.05)
-        ax.set_title(title, loc="left", color=INK)
-        ax.set_xlabel("время, с", color=MUTED)
-        ax.set_ylabel("амплитуда", color=MUTED)
-        ax.grid(color=LINE, lw=0.5)
+        _panel_title(ax, title)
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Amplitude")
         frequencies, times, power = signal.spectrogram(signal_in, sample_rate, nperseg=512, noverlap=384)
         spectrograms.append((frequencies, times, 10.0 * np.log10(power + 1e-12)))
     floor = min(float(np.percentile(item[2], 5)) for item in spectrograms)
     ceiling = max(float(np.percentile(item[2], 99.5)) for item in spectrograms)
     image = None
     for ax, (frequencies, times, decibels), title in zip(
-        spec_axes, spectrograms, ("Спектр сухого", "Спектр с реверберацией"),
+        spec_axes, spectrograms, ("(c)  Dry spectrogram", "(d)  Reverberant spectrogram"),
     ):
-        _style_axes(ax)
-        image = ax.pcolormesh(times, frequencies, decibels, shading="auto", cmap="magma", vmin=floor, vmax=ceiling)
+        image = ax.pcolormesh(
+            times, frequencies, decibels, shading="auto", cmap="cividis", vmin=floor, vmax=ceiling, rasterized=True,
+        )
         ax.set_xlim(0, duration)
-        ax.set_ylim(0, 8000)
-        ax.set_title(title, loc="left", color=INK)
-        ax.set_xlabel("время, с", color=MUTED)
-        ax.set_ylabel("частота, Гц", color=MUTED)
-    fig.colorbar(image, cax=color_ax, label="дБ")
-    fig.subplots_adjust(left=0.07, right=0.96, top=0.90, bottom=0.08)
+        ax.set_ylim(0, sample_rate / 2.0)
+        _panel_title(ax, title)
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Frequency (Hz)")
+    colorbar = fig.colorbar(image, cax=color_ax)
+    colorbar.set_label("Level (dB)", fontsize=8)
+    colorbar.ax.tick_params(labelsize=7, width=0.6, length=3)
+    fig.subplots_adjust(left=0.09, right=0.94, top=0.96, bottom=0.08)
     _save(fig, path)
 
 
@@ -288,72 +273,72 @@ def write_listening_wav(path, data, sample_rate):
 
 def render_markdown(metrics):
     fixtures = "\n".join(
-        "| %s | %.3e | %s |" % (row["title"], row["max_abs"], "да" if row["within_atol"] else "нет")
+        "| %s | %.3e | %s |" % (_room_label(row), row["max_abs"], "yes" if row["within_atol"] else "no")
         for row in metrics["fixtures"]
     )
     timings = "\n".join(
-        "| %s | %.1f | %d |" % (row["title"], row["median_ms"], row["samples"])
+        "| %s | %.1f | %d |" % (_room_label(row), row["median_ms"], row["samples"])
         for row in metrics["benchmark"]
     )
     path = metrics["direct_path"]
     rt60 = metrics["rt60"]
     versions = metrics["versions"]
-    return """# Оценка качества PY_ROOMSIM
+    return """# Quality of PY_ROOMSIM
 
-Отчёт собран скриптом `scripts/make_quality_report.py` {generated}. Сравниваются три эталонные комнаты из `tests/fixtures/`, геометрическая задержка прямого звука и оценка RT60 по кривой Шрёдера. Побитовое равенство RIR на этой платформе не выполняется: расхождение сидит в последних битах FFT и `lfilter`, поэтому порог качества — `1e-12`.
+This report was written by `scripts/make_quality_report.py` on {generated}. It compares three reference rooms in `tests/fixtures/`, the geometric direct-path delay, and an RT60 estimate from the Schroeder curve. Bit-exact agreement does not hold on this platform: the residual is in the last bits of the FFT and of `lfilter`, so the acceptance threshold is `1e-12`.
 
-Версии прогона: Python {python}, NumPy {numpy}, SciPy {scipy}, soundfile {soundfile}.
+Run versions: Python {python}, NumPy {numpy}, SciPy {scipy}, soundfile {soundfile}.
 
-## Сводка
+## Summary
 
-![Сводка качества](img/quality/scorecard.png)
+![Quality summary](img/quality/scorecard.png)
 
-| Проверка | Результат |
+| Check | Result |
 | --- | --- |
-| Максимум \\|Δ\\| по эталонам | {worst:.3e} |
-| Повторный вызов omni | {repeat} |
-| Ошибка задержки прямого звука | {error:+.2f} отсчёта (пик {peak}, геометрия {expected:.2f}) |
-| RT60, цель {target:.2f} с | оценка {estimated:.3f} с, относительная ошибка {rel:.0f}% |
-| Поглощение демо-комнаты | {absorption:.4f} |
+| Maximum \\|Δ\\| across the reference rooms | {worst:.3e} |
+| Repeated omnidirectional call | {repeat} |
+| Direct-path error | {error:+.2f} samples (peak {peak}, geometry {expected:.2f}) |
+| RT60, target {target:.2f} s | estimate {estimated:.3f} s, relative error {rel:.0f}% |
+| Demo-room absorption | {absorption:.4f} |
 
-## Импульсные отклики
+## Impulse responses
 
-Пунктир на графике — задержка `distance / 343`. Для всенаправленного сценария допуск проверки — один отсчёт.
+The dashed line is the delay `distance / 343`. The one-sample tolerance applies to the omnidirectional room.
 
-![Импульсные отклики](img/quality/rir_waveforms.png)
+![Room impulse responses](img/quality/rir_waveforms.png)
 
-## Расхождение с эталоном
+## Deviation from the reference
 
-| Комната | max \\|Δ\\| | в пределах 1e-12 |
+| Room | max \\|Δ\\| | within 1e-12 |
 | --- | --- | --- |
 {fixtures}
 
-![Ошибка относительно эталона](img/quality/fixture_error.png)
+![Absolute deviation from the reference](img/quality/fixture_error.png)
 
-## Спад энергии
+## Energy decay
 
-Демо-комната {room} м, RT60 {target:.2f} с, микрофоны всенаправленный и кардиоида. Наклон снят на участке Шрёдера от −5 до −25 дБ и экстраполирован к −60 дБ (T20). Это проверка порядка величины: хвост импульса обрезан длиной, которую задаёт RT60, а воздух в симуляторе добавляет затухание сверх формулы Норриса–Эйринга.
+The demo room is {room} m, with a target RT60 of {target:.2f} s and one omnidirectional microphone plus one cardioid. The slope is fitted on the Schroeder curve from −5 dB to −25 dB and extrapolated to −60 dB (T20). This is an order-of-magnitude check: the impulse is truncated at the length set by the target RT60, and air absorption in the simulator adds decay beyond the Norris–Eyring formula.
 
-![Спад энергии](img/quality/energy_decay.png)
+![Schroeder energy decay](img/quality/energy_decay.png)
 
-## Пример прослушивания
+## Listening example
 
-`wav/4.wav` приведён к 16 кГц через `AudioLoader` и свёрнут с первым каналом демо-импульса функцией `OverlapAddFilter`. Свёртка возвращает сигнал той же длины, что и сухой фрагмент. Файлы ниже нормированы к пику {listening:.2f} для прослушивания; график показывает амплитуду до нормировки.
+`wav/4.wav` is resampled to 16 kHz by `AudioLoader` and convolved with the first channel of the demo impulse response by `OverlapAddFilter`. The convolution has the same length as the dry signal. The files below are normalized to a peak of {listening:.2f} for playback; the figure shows the waveform before normalization.
 
-- [examples/rir_stereo.wav](examples/rir_stereo.wav) — стереоимпульс, сырой пик {rir_peak:.3f}
-- [examples/speech_reverb.wav](examples/speech_reverb.wav) — речь после свёртки, сырой пик {wet_peak:.3f}, сухой пик {dry_peak:.3f}
+- [examples/rir_stereo.wav](examples/rir_stereo.wav) — stereo impulse response, raw peak {rir_peak:.3f}
+- [examples/speech_reverb.wav](examples/speech_reverb.wav) — reverberant speech, raw peak {wet_peak:.3f}, dry peak {dry_peak:.3f}
 
-![Речь до и после](img/quality/speech_before_after.png)
+![Dry and reverberant speech](img/quality/speech_before_after.png)
 
-## Время расчёта
+## Runtime
 
-Медиана трёх вызовов `create_rir` на эталонных сценариях.
+Median of three `create_rir` calls on the reference rooms.
 
-| Комната | медиана, мс | отсчёты |
+| Room | median (ms) | samples |
 | --- | --- | --- |
 {timings}
 
-## Как повторить
+## Reproduce
 
 ```bash
 python3 -m pip install --user -r requirements-report.txt
@@ -361,7 +346,7 @@ python3 -m unittest tests.test_quality_metrics -v
 python3 scripts/make_quality_report.py
 ```
 
-Числа этого файла и `img/quality/metrics.json` перезаписываются скриптом.
+The script overwrites this file and `img/quality/metrics.json`.
 """.format(
         generated=metrics["generated_at"],
         python=versions["python"],
@@ -369,7 +354,7 @@ python3 scripts/make_quality_report.py
         scipy=versions["scipy"],
         soundfile=versions["soundfile"],
         worst=max(row["max_abs"] for row in metrics["fixtures"]),
-        repeat="идентичен" if metrics["repeat_identical"] else "различается",
+        repeat="identical" if metrics["repeat_identical"] else "not identical",
         error=path["error_samples"],
         peak=path["peak_index"],
         expected=path["expected_samples"],
