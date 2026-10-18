@@ -1,0 +1,183 @@
+{
+  "generated_at": "2026-10-18 13:24 UTC",
+  "versions": {
+    "python": "3.12.3",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "soundfile": "0.14.0"
+  },
+  "fixture_atol": 1e-12,
+  "fixtures": [
+    {
+      "key": "omni",
+      "title": "Всенаправленный",
+      "max_abs": 1.8832158055204218e-14,
+      "within_atol": true,
+      "samples": 320,
+      "channels": 1,
+      "direct_paths": [
+        {
+          "distance_m": 1.0488088481701519,
+          "expected_samples": 48.924027902980846,
+          "peak_index": 48,
+          "error_samples": -0.9240279029808462,
+          "within_tolerance": true,
+          "peak_value": 0.9357876537958346
+        }
+      ],
+      "sample_rate": 16000
+    },
+    {
+      "key": "directional",
+      "title": "Направленный",
+      "max_abs": 3.8653975853453204e-15,
+      "within_atol": true,
+      "samples": 1208,
+      "channels": 2,
+      "direct_paths": [
+        {
+          "distance_m": 1.445683229480096,
+          "expected_samples": 67.43711857633102,
+          "peak_index": 66,
+          "error_samples": -1.4371185763310166,
+          "within_tolerance": false,
+          "peak_value": 0.43033541381153995
+        },
+        {
+          "distance_m": 0.9899494936611664,
+          "expected_samples": 46.17840203667249,
+          "peak_index": 45,
+          "error_samples": -1.1784020366724874,
+          "within_tolerance": false,
+          "peak_value": 0.25799427957011584
+        }
+      ],
+      "sample_rate": 16000
+    },
+    {
+      "key": "facade",
+      "title": "Фасад",
+      "max_abs": 5.56325818745762e-15,
+      "within_atol": true,
+      "samples": 480,
+      "channels": 2,
+      "direct_paths": [
+        {
+          "distance_m": 1.6309506430300091,
+          "expected_samples": 76.07933028711412,
+          "peak_index": 75,
+          "error_samples": -1.079330287114118,
+          "within_tolerance": false,
+          "peak_value": 0.6001865017696963
+        },
+        {
+          "distance_m": 1.296148139681572,
+          "expected_samples": 60.461720801472744,
+          "peak_index": 59,
+          "error_samples": -1.4617208014727439,
+          "within_tolerance": false,
+          "peak_value": 0.5236102446348301
+        }
+      ],
+      "sample_rate": 16000
+    }
+  ],
+  "repeat_identical": true,
+  "direct_path": {
+    "distance_m": 1.0488088481701519,
+    "expected_samples": 48.924027902980846,
+    "peak_index": 48,
+    "error_samples": -0.9240279029808462,
+    "within_tolerance": true,
+    "peak_value": 0.9357876537958346
+  },
+  "rt60": {
+    "target_s": 0.3,
+    "estimated_s": 0.2802142029341361,
+    "relative_error": 0.06595265688621288,
+    "absorption": 0.24944816641127376,
+    "room_m": [
+      3.5,
+      4.0,
+      2.5
+    ],
+    "source_m": [
+      2.0,
+      2.0,
+      1.3
+    ],
+    "mics": [
+      {
+        "pos": [
+          1.2,
+          1.5,
+          1.2
+        ],
+        "direction": "omnidirectional"
+      },
+      {
+        "pos": [
+          2.4,
+          2.6,
+          1.4
+        ],
+        "direction": "cardioid"
+      }
+    ],
+    "sample_rate": 16000,
+    "samples": 4800,
+    "slope_db_per_s": -214.12190878170045,
+    "fit_points": 1539,
+    "intercept_db": 0.6746164313528749,
+    "direct_path": {
+      "distance_m": 0.9486832980505139,
+      "expected_samples": 44.25344830556333,
+      "peak_index": 43,
+      "error_samples": -1.2534483055633316,
+      "within_tolerance": false,
+      "peak_value": 0.939140391438523
+    }
+  },
+  "benchmark": [
+    {
+      "key": "omni",
+      "title": "Всенаправленный",
+      "median_ms": 3.2541890000175044,
+      "min_ms": 3.1020339999940916,
+      "samples": 320,
+      "channels": 1
+    },
+    {
+      "key": "directional",
+      "title": "Направленный",
+      "median_ms": 104.30095800006711,
+      "min_ms": 102.85443899988422,
+      "samples": 1208,
+      "channels": 2
+    },
+    {
+      "key": "facade",
+      "title": "Фасад",
+      "median_ms": 9.074472000065725,
+      "min_ms": 9.044324999877063,
+      "samples": 480,
+      "channels": 2
+    }
+  ],
+  "examples": {
+    "rir_stereo": {
+      "path": "examples/rir_stereo.wav",
+      "sample_rate": 16000,
+      "samples": 4800,
+      "channels": 2,
+      "raw_peak": 0.939140391438523
+    },
+    "speech_reverb": {
+      "path": "examples/speech_reverb.wav",
+      "sample_rate": 16000,
+      "samples": 78732,
+      "raw_peak": 2.211009399294899,
+      "dry_peak": 1.0115114450454712
+    }
+  }
+}
